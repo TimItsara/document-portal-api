@@ -93,7 +93,7 @@ export async function resumePolling() {
     console.log(`Resuming polling for ${pending.length} pending submission(s)...`)
     for (const submission of pending) {
       console.log("🚀 ~ resumePolling ~ submission:", submission)
-      void pollSubmission(submission.id)
+      await pollSubmission(submission.id)
     }
   } catch (err) {
     console.warn("resumePolling skipped — DB not ready:", err instanceof Error ? err.message : err)
