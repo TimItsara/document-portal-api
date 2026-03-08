@@ -14,9 +14,6 @@ export async function checkAndUpdateSubmission(submissionId: string) {
 
   const result = await fetchVerifyResult(submission.documentVerifyId);
   const isTerminal = TERMINAL_STATUSES.includes(result.status);
-
-  if (!isTerminal) return submission;
-
   const isDone = result.status === "DONE";
 
   return await prisma.documentSubmission.update({
@@ -24,9 +21,11 @@ export async function checkAndUpdateSubmission(submissionId: string) {
     data: {
       lastPolledAt: new Date(),
       pollCount: { increment: 1 },
-      verifyStatus: isDone ? VerifyStatus.DONE : VerifyStatus.FAILED,
-      verifyResult: result as Prisma.InputJsonValue,
-      verifyError: isDone ? null : "Truuth verification returned FAIL",
+      ...(isTerminal && {
+        verifyStatus: isDone ? VerifyStatus.DONE : VerifyStatus.FAILED,
+        verifyResult: result as Prisma.InputJsonValue,
+        verifyError: isDone ? null : "Truuth verification returned FAIL",
+      }),
     },
   });
 }
