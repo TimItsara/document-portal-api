@@ -71,18 +71,21 @@ export async function pollSubmission(submissionId: string) {
 // Called once on startup — resumes any docs still in PROCESSING state
 // e.g. after server restart or Vercel cold start
 export async function resumePolling() {
-  const pending = await prisma.documentSubmission.findMany({
-    where: { verifyStatus: VerifyStatus.PROCESSING },
-  });
+  try {
+    const pending = await prisma.documentSubmission.findMany({
+      where: { verifyStatus: VerifyStatus.PROCESSING },
+    })
 
-  if (pending.length === 0) {
-    console.log("No pending submissions to resume polling.");
-    return;
-  }
+    if (pending.length === 0) {
+      console.log("No pending submissions to resume polling.");
+      return;
+    }
 
-  console.log(`Resuming polling for ${pending.length} pending submission(s)...`);
-
-  for (const submission of pending) {
-    void pollSubmission(submission.id);
+    console.log(`Resuming polling for ${pending.length} pending submission(s)...`)
+    for (const submission of pending) {
+      void pollSubmission(submission.id)
+    }
+  } catch (err) {
+    console.warn("resumePolling skipped — DB not ready:", err instanceof Error ? err.message : err)
   }
 }
