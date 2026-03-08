@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth";
 import documentRoutes from "./routes/documents";
-import { resumePolling } from "./lib/poller";
+// import { resumePolling } from "./lib/poller";
 
 const app = express();
 
@@ -35,9 +35,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/documents", documentRoutes);
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
-resumePolling().catch((err) => {
-  console.error("Failed to resume polling:", err);
-});
+// resumePolling().catch((err) => {
+//   console.error("Failed to resume polling:", err);
+// });
 
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 3001;

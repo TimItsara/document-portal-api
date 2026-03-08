@@ -2,100 +2,31 @@ import { prisma } from "./prisma";
 import { VerifyStatus, Prisma } from "@prisma/client";
 import { fetchVerifyResult } from "./truuth";
 
-const POLL_INTERVAL_MS = 5000; // 5 seconds
 const TERMINAL_STATUSES = ["DONE", "FAIL"];
 
-// ─── POLL A SINGLE SUBMISSION ─────────────────────────────────────────────────
-export async function pollSubmission(submissionId: string) {
+export async function checkAndUpdateSubmission(submissionId: string) {
   const submission = await prisma.documentSubmission.findUnique({
     where: { id: submissionId },
   });
-  console.log("🚀 ~ pollSubmission ~ submission:", submission)
 
-  if (!submission || !submission.documentVerifyId) return;
-  if (submission.verifyStatus !== VerifyStatus.PROCESSING) return;
+  if (!submission || !submission.documentVerifyId) return submission;
+  if (submission.verifyStatus !== VerifyStatus.PROCESSING) return submission;
 
-  const interval = setInterval(async () => {
-    try {
-      // Refresh latest state from DB each tick
-      const current = await prisma.documentSubmission.findUnique({
-        where: { id: submissionId },
-      });
-      console.log("🚀 ~ pollSubmission ~ current:", current)
+  const result = await fetchVerifyResult(submission.documentVerifyId);
+  const isTerminal = TERMINAL_STATUSES.includes(result.status);
 
-      if (
-        !current ||
-        current.verifyStatus !== VerifyStatus.PROCESSING ||
-        current.documentVerifyId !== submission.documentVerifyId
-      ) {
-        console.log("🚀 ~ pollSubmission ~ !current:", !current)
-        console.log("🚀 ~ pollSubmission ~ current.verifyStatus !== VerifyStatus.PROCESSING:", current && current.verifyStatus !== VerifyStatus.PROCESSING)
-        console.log("🚀 ~ pollSubmission ~ current.documentVerifyId !== submission.documentVerifyId:", current && current.documentVerifyId !== submission.documentVerifyId)
-        clearInterval(interval);
-        console.log("🚀 ~ pollSubmission ~ clearInterval:")
-        return;
-      }
+  if (!isTerminal) return submission;
 
-      const result = await fetchVerifyResult(current.documentVerifyId!);
-      console.log("🚀 ~ pollSubmission ~ result:", result)
-      const isTerminal = TERMINAL_STATUSES.includes(result.status);
-      const isDone = result.status === "DONE";
+  const isDone = result.status === "DONE";
 
-      if (isTerminal) clearInterval(interval);
-
-      await prisma.documentSubmission.update({
-        where: { id: submissionId },
-        data: {
-          lastPolledAt: new Date(),
-          pollCount: { increment: 1 },
-          ...(isTerminal && {
-            verifyStatus: isDone ? VerifyStatus.DONE : VerifyStatus.FAILED,
-            verifyResult: result as Prisma.InputJsonValue,
-            verifyError: isDone ? null : "Truuth verification returned FAIL",
-          }),
-        },
-      });
-
-      if (isTerminal) {
-        console.log(`Submission ${submissionId} completed with status: ${result.status}`);
-      }
-
-    } catch (err) {
-      console.log("🚀 ~ pollSubmission ~ err:", err)
-      clearInterval(interval);
-      await prisma.documentSubmission.update({
-        where: { id: submissionId },
-        data: {
-          verifyStatus: VerifyStatus.FAILED,
-          verifyError: err instanceof Error ? err.message : "Unknown polling error",
-          lastPolledAt: new Date(),
-        },
-      });
-    }
-  }, POLL_INTERVAL_MS);
-}
-
-// ─── RESUME POLLING ON SERVER START ──────────────────────────────────────────
-// Called once on startup — resumes any docs still in PROCESSING state
-// e.g. after server restart or Vercel cold start
-export async function resumePolling() {
-  try {
-    const pending = await prisma.documentSubmission.findMany({
-      where: { verifyStatus: VerifyStatus.PROCESSING },
-    })
-    console.log("🚀 ~ resumePolling ~ pending:", pending)
-
-    if (pending.length === 0) {
-      console.log("No pending submissions to resume polling.");
-      return;
-    }
-
-    console.log(`Resuming polling for ${pending.length} pending submission(s)...`)
-    for (const submission of pending) {
-      console.log("🚀 ~ resumePolling ~ submission:", submission)
-      pollSubmission(submission.id)
-    }
-  } catch (err) {
-    console.warn("resumePolling skipped — DB not ready:", err instanceof Error ? err.message : err)
-  }
+  return await prisma.documentSubmission.update({
+    where: { id: submissionId },
+    data: {
+      lastPolledAt: new Date(),
+      pollCount: { increment: 1 },
+      verifyStatus: isDone ? VerifyStatus.DONE : VerifyStatus.FAILED,
+      verifyResult: result as Prisma.InputJsonValue,
+      verifyError: isDone ? null : "Truuth verification returned FAIL",
+    },
+  });
 }
