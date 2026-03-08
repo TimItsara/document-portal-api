@@ -21,13 +21,18 @@ export async function pollSubmission(submissionId: string) {
       const current = await prisma.documentSubmission.findUnique({
         where: { id: submissionId },
       });
+      console.log("🚀 ~ pollSubmission ~ current:", current)
 
       if (
         !current ||
         current.verifyStatus !== VerifyStatus.PROCESSING ||
         current.documentVerifyId !== submission.documentVerifyId
       ) {
+        console.log("🚀 ~ pollSubmission ~ !current:", !current)
+        console.log("🚀 ~ pollSubmission ~ current.verifyStatus !== VerifyStatus.PROCESSING:", current && current.verifyStatus !== VerifyStatus.PROCESSING)
+        console.log("🚀 ~ pollSubmission ~ current.documentVerifyId !== submission.documentVerifyId:", current && current.documentVerifyId !== submission.documentVerifyId)
         clearInterval(interval);
+        console.log("🚀 ~ pollSubmission ~ clearInterval:")
         return;
       }
 
@@ -56,6 +61,7 @@ export async function pollSubmission(submissionId: string) {
       }
 
     } catch (err) {
+      console.log("🚀 ~ pollSubmission ~ err:", err)
       clearInterval(interval);
       await prisma.documentSubmission.update({
         where: { id: submissionId },
