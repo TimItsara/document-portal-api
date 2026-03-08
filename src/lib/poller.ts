@@ -10,6 +10,7 @@ export async function pollSubmission(submissionId: string) {
   const submission = await prisma.documentSubmission.findUnique({
     where: { id: submissionId },
   });
+  console.log("🚀 ~ pollSubmission ~ submission:", submission)
 
   if (!submission || !submission.documentVerifyId) return;
   if (submission.verifyStatus !== VerifyStatus.PROCESSING) return;
@@ -31,6 +32,7 @@ export async function pollSubmission(submissionId: string) {
       }
 
       const result = await fetchVerifyResult(current.documentVerifyId!);
+      console.log("🚀 ~ pollSubmission ~ result:", result)
       const isTerminal = TERMINAL_STATUSES.includes(result.status);
       const isDone = result.status === "DONE";
 
@@ -75,6 +77,7 @@ export async function resumePolling() {
     const pending = await prisma.documentSubmission.findMany({
       where: { verifyStatus: VerifyStatus.PROCESSING },
     })
+    console.log("🚀 ~ resumePolling ~ pending:", pending)
 
     if (pending.length === 0) {
       console.log("No pending submissions to resume polling.");
@@ -83,6 +86,7 @@ export async function resumePolling() {
 
     console.log(`Resuming polling for ${pending.length} pending submission(s)...`)
     for (const submission of pending) {
+      console.log("🚀 ~ resumePolling ~ submission:", submission)
       void pollSubmission(submission.id)
     }
   } catch (err) {

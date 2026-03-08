@@ -140,6 +140,7 @@ export async function fetchVerifyResult(documentVerifyId: string) {
       "Content-Type": "application/json",
     },
   });
+  console.log("🚀 ~ fetchVerifyResult ~ res:", res)
 
   if (!res.ok) throw new Error(`Poll failed (${res.status})`);
   return res.json() as Promise<{ status: string; [key: string]: unknown }>;
