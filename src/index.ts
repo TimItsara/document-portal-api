@@ -35,7 +35,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/documents", documentRoutes);
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
-await resumePolling().catch((err) => {
+resumePolling().catch((err) => {
   console.error("Failed to resume polling:", err);
 });
 
